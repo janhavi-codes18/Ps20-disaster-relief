@@ -5,6 +5,7 @@ from agents.needs_agent import assess_needs
 from agents.priority_agent import calculate_priorities
 from agents.allocation_agent import allocate_resources
 from agents.reallocation_agent import reassess_situation
+from agents.duplicate_effort_agent import detect_duplicate_efforts
 
 
 def run_ai(disaster_data):
@@ -44,16 +45,24 @@ def run_ai(disaster_data):
     )
 
     # --------------------------------------------------
-    # 4. REALLOCATION
+    # 4. DUPLICATE EFFORT DETECTION
+    # --------------------------------------------------
+
+    current_allocations = disaster_data.get(
+        "previous_allocations",
+        []
+    )
+
+    duplicate_data = detect_duplicate_efforts(
+        current_allocations
+    )
+
+    # --------------------------------------------------
+    # 5. REALLOCATION
     # --------------------------------------------------
 
     new_reports = disaster_data.get(
         "new_reports",
-        []
-    )
-
-    current_allocations = disaster_data.get(
-        "previous_allocations",
         []
     )
 
@@ -86,6 +95,32 @@ def run_ai(disaster_data):
         }
 
     # --------------------------------------------------
+    # 6. COMBINE DUPLICATE-EFFORT ALERTS
+    # --------------------------------------------------
+
+    duplicate_efforts = duplicate_data.get(
+        "duplicate_efforts",
+        []
+    )
+
+    # Add duplicate-effort alerts to the reallocation alerts
+    # so the final result contains all important alerts.
+    if duplicate_efforts:
+
+        for duplicate in duplicate_efforts:
+
+            reallocation_data["alerts"].append({
+                "alert_id": f"A_DUP_{len(reallocation_data['alerts']) + 1}",
+                "type": "DUPLICATE_EFFORT",
+                "severity": "HIGH",
+                "zone_id": duplicate.get("zone_id"),
+                "message": duplicate.get(
+                    "reason",
+                    "Duplicate resource allocation detected."
+                )
+            })
+
+    # --------------------------------------------------
     # FINAL RESULT
     # --------------------------------------------------
 
@@ -103,7 +138,10 @@ def run_ai(disaster_data):
 
         "allocation": allocation_data,
 
-        "reallocation": reallocation_data
+        "reallocation": {
+            **reallocation_data,
+            "duplicate_efforts": duplicate_efforts
+        }
     }
 
 

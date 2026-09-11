@@ -1,0 +1,109 @@
+{
+  "disaster": {
+    "disaster_id": "D001",
+    "type": "Flood",
+    "location": "Pune",
+    "severity": 8,
+    "description": "Heavy flooding has affected multiple areas",
+    "timestamp": "2026-09-11T10:30:00Z"
+  },
+  "zones": [
+    {
+      "zone_id": "Z001",
+      "name": "Zone A",
+      "population_affected": 5000,
+      "severity": 9,
+      "people_needing_medical": 800,
+      "people_needing_food": 4000,
+      "people_needing_shelter": 3000,
+      "people_trapped": 200,
+      "accessibility": "Blocked"
+    },
+    {
+      "zone_id": "Z002",
+      "name": "Zone B",
+      "population_affected": 3000,
+      "severity": 6,
+      "people_needing_medical": 200,
+      "people_needing_food": 2500,
+      "people_needing_shelter": 1500,
+      "people_trapped": 20,
+      "accessibility": "Accessible"
+    }
+  ],
+  "resources": [
+    {
+      "resource_id": "R001",
+      "type": "Food",
+      "quantity": 5000,
+      "unit": "packets",
+      "location": "Warehouse A",
+      "available": true
+    },
+    {
+      "resource_id": "R002",
+      "type": "Medical",
+      "quantity": 1000,
+      "unit": "kits",
+      "location": "Warehouse B",
+      "available": true
+    },
+    {
+      "resource_id": "R003",
+      "type": "Shelter",
+      "quantity": 2000,
+      "unit": "kits",
+      "location": "Warehouse C",
+      "available": true
+    }
+  ],
+  "previous_allocations": [
+    {
+      "resource_id": "R001",
+      "zone_id": "Z001",
+      "resource_type": "Food",
+      "quantity": 4000,
+      "unit": "packets"
+    },
+    {
+      "resource_id": "R002",
+      "zone_id": "Z001",
+      "resource_type": "Medical",
+      "quantity": 800,
+      "unit": "kits"
+    },
+    {
+      "resource_id": "R003",
+      "zone_id": "Z001",
+      "resource_type": "Shelter",
+      "quantity": 2000,
+      "unit": "kits"
+    },
+    {
+      "resource_id": "R001",
+      "zone_id": "Z002",
+      "resource_type": "Food",
+      "quantity": 1000,
+      "unit": "packets"
+    },
+    {
+      "resource_id": "R002",
+      "zone_id": "Z002",
+      "resource_type": "Medical",
+      "quantity": 200,
+      "unit": "kits"
+    }
+  ],
+  "new_reports": [
+    {
+      "report_id": "REP001",
+      "zone_id": "Z002",
+      "type": "NEW_EMERGENCY",
+      "description": "A bridge has collapsed in Zone B. 150 people are trapped and emergency medical assistance is required.",
+      "severity_change": 3,
+      "people_trapped": 150,
+      "additional_medical_needed": 300,
+      "timestamp": "2026-09-11T11:15:00Z"
+    }
+  ]
+}

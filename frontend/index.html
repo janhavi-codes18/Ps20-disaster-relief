@@ -128,7 +128,7 @@ textarea{min-height:88px;resize:vertical}
 <main class="main">
   <header class="topbar">
     <div><div class="eyebrow">Emergency intelligence platform</div><h2>Disaster Command Center</h2></div>
-    <div class="status"><span class="dot"></span> MOCK CONTRACT ONLINE</div>
+    <div class="status"><span class="dot"></span> AI SYSTEM ONLINE</div>
   </header>
 
   <section id="overview" class="section">
@@ -142,7 +142,7 @@ textarea{min-height:88px;resize:vertical}
   </section>
 
   <section id="disaster" class="section">
-    <div class="section-head"><div><h3>Disaster Input</h3><p>Enter the situation that will be analyzed by the future backend + AI agent.</p></div></div>
+    <div class="section-head"><div><h3>Disaster Input</h3><p>Enter the situation that will be analyzed by the connected backend + AI agents.</p></div></div>
     <div class="card panel">
       <form id="disasterForm">
         <div class="form-grid">
@@ -195,39 +195,39 @@ textarea{min-height:88px;resize:vertical}
     <div class="section-head"><div><h3>What-if Emergency Simulation</h3><p>Test how the plan changes when the situation becomes worse.</p></div></div>
     <div class="card panel">
       <div class="form-grid">
-        <div class="field"><label>Simulated People Affected</label><input id="simPeople" type="number" value="2500" min="1"></div>
+        <div class="field"><label>Emergency Zone</label><select id="simZone"><option value="ZONE-02">Zone B — ZONE-02</option><option value="ZONE-03">Zone C — ZONE-03</option><option value="ZONE-04">Zone D — ZONE-04</option></select></div>
+        <div class="field"><label>People Trapped</label><input id="simPeople" type="number" value="150" min="1"></div>
+        <div class="field"><label>Additional Medical Needed</label><input id="simMedical" type="number" value="300" min="0"></div>
+        <div class="field"><label>Severity Increase</label><select id="simSeverity"><option value="3">+3 — Critical Emergency</option><option value="2">+2 — High Emergency</option><option value="1">+1 — Moderate Emergency</option></select></div>
         <div class="field"><label>Water Available</label><input id="simWater" type="number" value="400" min="0"></div>
         <div class="field"><label>Food Available</label><input id="simFood" type="number" value="600" min="0"></div>
-        <div class="field"><label>Severity</label><select id="simSeverity"><option value="5">5 — Critical</option><option value="4">4 — High</option><option value="3">3 — Moderate</option></select></div>
-        <div class="full" style="display:flex;justify-content:flex-end"><button class="primary" id="simulateBtn">⚡ Run Simulation</button></div>
+        <div class="full" style="display:flex;justify-content:flex-end"><button class="primary" id="simulateBtn">⚡ Run Emergency Simulation</button></div>
       </div>
       <div id="simResult" class="sim-result"></div>
     </div>
   </section>
 
   <section id="history" class="section">
-    <div class="section-head"><div><h3>Allocation History</h3><p>Previous AI decision-support runs. Saved locally in this browser.</p></div><button class="secondary" id="clearHistoryBtn" type="button">Clear History</button></div>
+    <div class="section-head"><div><h3>Allocation History</h3><p>AI decision-support runs saved by the backend, with local fallback history.</p></div><button class="secondary" id="clearHistoryBtn" type="button">Clear History</button></div>
     <div class="card panel table-wrap">
-      <table class="table"><thead><tr><th>Date</th><th>Disaster</th><th>Priority</th><th>Zones</th><th>Status</th></tr></thead><tbody id="historyBody"></tbody></table>
+      <table class="table"><thead><tr><th>Date</th><th>Disaster</th><th>Priority</th><th>Zones</th><th>Status</th><th>Analysis ID</th></tr></thead><tbody id="historyBody"></tbody></table>
     </div>
   </section>
 
-  <div class="footer">RESQ-AI frontend prototype • Mock data mode • AI contract aligned • Backend/API integration intentionally disabled • History persisted locally</div>
+  <div class="footer">RESQ-AI • AI-powered disaster coordination • Backend connected • Multi-agent analysis enabled</div>
 </main>
 </div>
 
 <div id="loader" class="overlay">
   <div class="card loader-card"><div class="spinner"></div><h3 style="margin:0 0 7px">AI Analysis in Progress</h3><p class="muted" style="font-size:12px">Analyzing impact → checking zones → evaluating resources → preparing allocation plan</p></div>
 </div>
-<div id="toast" class="toast">Mock AI result updated.</div>
+<div id="toast" class="toast">AI result updated.</div>
 
 <script>
 /* ==========================================================
    RESQ-AI FRONTEND
-   MOCK MODE ONLY
-   No fetch(), no assumed API endpoints.
-   Replace the functions inside the API ADAPTER section later
-   with the team's finalized backend contract.
+   REAL BACKEND + AI INTEGRATION
+   Frontend → Node.js → Python AI Agents → Frontend
    ========================================================== */
 
 const MOCK = {
@@ -440,38 +440,141 @@ const MOCK = {
 
 
 
-/* ---------- LOCAL MOCK HISTORY PERSISTENCE ---------- */
-const DEFAULT_HISTORY = [
-  { date: "Today • 10:15", disaster: "Flood", priority: "CRITICAL", zones: 4, status: "Reallocation triggered" },
-  { date: "Today • 09:40", disaster: "Flood", priority: "HIGH", zones: 4, status: "Plan generated" }
-];
+/* ---------- PERSISTENT HISTORY ---------- */
+/*
+  The backend already saves every AI analysis in MongoDB.
+  This frontend keeps a local fallback and also supports
+  GET/DELETE /api/ai/history if those backend endpoints exist.
+*/
+const HISTORY_KEY = "resq_history_v2";
+const MAX_HISTORY = 50;
 
 function loadHistory() {
   try {
-    const saved = JSON.parse(localStorage.getItem("resq_history") || "null");
-    MOCK.history = Array.isArray(saved) ? saved : [...DEFAULT_HISTORY];
+    const saved = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    MOCK.history = Array.isArray(saved) ? saved : [];
   } catch (error) {
-    MOCK.history = [...DEFAULT_HISTORY];
+    console.warn("History could not be loaded.", error);
+    MOCK.history = [];
   }
 }
 
-function saveHistory({ disaster, priority, zones, status }) {
+function saveHistory({ disaster, priority, zones, status, analysisId = "", result = null }) {
   const now = new Date();
-  const date = now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  const time = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const date = now.toLocaleDateString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric"
+  });
+  const time = now.toLocaleTimeString("en-IN", {
+    hour: "2-digit", minute: "2-digit"
+  });
 
   MOCK.history.unshift({
+    id: analysisId || `local-${Date.now()}`,
     date: `${date} • ${time}`,
     disaster: disaster || "Unknown",
     priority: priority || "NORMAL",
     zones: Number(zones) || 0,
-    status: status || "Event recorded"
+    status: status || "Event recorded",
+    analysis_id: analysisId || null,
+    reallocation_needed: Boolean(result?.reallocation_needed),
+    alerts: Array.isArray(result?.alerts) ? result.alerts.length : 0
   });
 
-  MOCK.history = MOCK.history.slice(0, 50);
-  try { localStorage.setItem("resq_history", JSON.stringify(MOCK.history)); }
-  catch (error) { console.warn("Mock history could not be persisted.", error); }
+  MOCK.history = MOCK.history.slice(0, MAX_HISTORY);
+
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(MOCK.history));
+  } catch (error) {
+    console.warn("Local history could not be persisted.", error);
+  }
+
   renderHistory();
+}
+
+async function loadBackendHistory() {
+  /*
+    If GET /api/ai/history is available, MongoDB history becomes
+    the primary source. If it is not available yet, local history
+    remains the fallback and no UI error is shown.
+  */
+  try {
+    const response = await fetch("/api/ai/history", {
+      method: "GET",
+      headers: { "Accept": "application/json" }
+    });
+
+    if (!response.ok) return;
+
+    const payload = await response.json();
+    const rows = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload.history)
+        ? payload.history
+        : Array.isArray(payload.result)
+          ? payload.result
+          : [];
+
+    if (!rows.length) return;
+
+    MOCK.history = rows.map(item => {
+      const created = item.createdAt ? new Date(item.createdAt) : null;
+
+      return {
+        id: item._id || item.id || item.analysis_id || `db-${Date.now()}`,
+        date: created && !Number.isNaN(created.getTime())
+          ? `${created.toLocaleDateString("en-IN", {
+              day: "2-digit", month: "short", year: "numeric"
+            })} • ${created.toLocaleTimeString("en-IN", {
+              hour: "2-digit", minute: "2-digit"
+            })}`
+          : item.date || "Saved analysis",
+        disaster: item.input_data?.disaster?.type ||
+                  item.disaster_type ||
+                  "Unknown",
+        priority: item.prioritized_zones?.[0]?.priority || "NORMAL",
+        zones: Array.isArray(item.prioritized_zones)
+          ? item.prioritized_zones.length
+          : Number(item.zones) || 0,
+        status: item.reallocation_needed
+          ? "Reallocation triggered"
+          : "Plan generated",
+        analysis_id: item._id || item.analysis_id || null,
+        reallocation_needed: Boolean(item.reallocation_needed),
+        alerts: Array.isArray(item.alerts) ? item.alerts.length : 0
+      };
+    });
+
+    MOCK.history = MOCK.history.slice(0, MAX_HISTORY);
+
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(MOCK.history));
+    } catch (_) {}
+
+    renderHistory();
+  } catch (_) {
+    // Safe fallback when the history GET endpoint is not available.
+  }
+}
+
+async function clearHistory() {
+  if (!window.confirm("Clear the history shown in this dashboard?")) return;
+
+  /*
+    If the backend exposes DELETE /api/ai/history, MongoDB history
+    can also be cleared. Otherwise only the browser fallback is cleared.
+  */
+  try {
+    await fetch("/api/ai/history", { method: "DELETE" });
+  } catch (_) {}
+
+  MOCK.history = [];
+
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch (_) {}
+
+  renderHistory();
+  showToast("History cleared from this dashboard");
 }
 
 function handleAllocationAction(zone, resource, action, quantity) {
@@ -481,6 +584,7 @@ function handleAllocationAction(zone, resource, action, quantity) {
     zones: MOCK.aiResponse.prioritized_zones.length,
     status: `${action}: ${quantity} ${resource} → ${zone}`
   });
+
   showToast(`${action} action saved to history`);
 }
 
@@ -544,14 +648,28 @@ function renderAI(){
 function renderHistory(){
   const body = document.getElementById("historyBody");
   if (!body) return;
+
   if (!MOCK.history.length) {
-    body.innerHTML = `<tr><td colspan="5"><div class="empty-state">No history records yet.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="6"><div class="empty-state">No history records yet.</div></td></tr>`;
     return;
   }
-  body.innerHTML = MOCK.history.map(h => `
-    <tr><td>${h.date}</td><td>${h.disaster}</td>
-      <td><span class="badge ${priorityClass(h.priority)}">${h.priority}</span></td>
-      <td>${h.zones}</td><td>${h.status}</td></tr>`).join("");
+
+  body.innerHTML = MOCK.history.map(h => {
+    const id = h.analysis_id || h.id || "Local";
+    const shortId = String(id).length > 18
+      ? String(id).slice(0, 18) + "…"
+      : id;
+
+    return `
+      <tr>
+        <td>${h.date || "—"}</td>
+        <td>${h.disaster || "Unknown"}</td>
+        <td><span class="badge ${priorityClass(h.priority)}">${h.priority || "NORMAL"}</span></td>
+        <td>${Number(h.zones) || 0}</td>
+        <td>${h.status || "Recorded"}</td>
+        <td title="${id}"><code style="font-size:10px;color:#8ea4bd">${shortId}</code></td>
+      </tr>`;
+  }).join("");
 }
 
 function showToast(text){
@@ -559,92 +677,361 @@ function showToast(text){
   setTimeout(()=>t.classList.remove("show"),2200);
 }
 
-/* ---------- FRONTEND STATE / FORM ---------- */
-document.getElementById("disasterForm").addEventListener("submit", e=>{
+/* ==========================================================
+   REAL BACKEND + AI INTEGRATION
+   ========================================================== */
+
+const AI_API_URL = "/api/ai/analyze";
+let pendingEmergencyReport = null;
+
+/* Build the exact input structure expected by run_ai.py. */
+function buildAIInput() {
+  const type = document.getElementById("disasterType").value;
+  const formSeverity = Number(document.getElementById("severity").value);
+  const location = document.getElementById("location").value.trim();
+  const people = Number(document.getElementById("people").value);
+  const description = document.getElementById("description").value.trim() ||
+    `${type} emergency affecting ${people.toLocaleString()} people at ${location}.`;
+
+  // The UI uses 1–5. The AI contract uses 1–10.
+  const severity = Math.max(1, Math.min(10, formSeverity * 2));
+
+  /*
+    Keep the existing four-zone dashboard design, but send the
+    detailed fields required by the AI agents.
+  */
+  const zoneFactors = [
+    { id: "ZONE-01", name: "Zone A", population: 0.34, severity: 10, medical: 0.16, food: 0.80, shelter: 0.60, trapped: 0.04, access: "Blocked" },
+    { id: "ZONE-02", name: "Zone B", population: 0.26, severity: 8,  medical: 0.10, food: 0.55, shelter: 0.40, trapped: 0.025, access: "Partially Blocked" },
+    { id: "ZONE-03", name: "Zone C", population: 0.22, severity: 7,  medical: 0.08, food: 0.45, shelter: 0.30, trapped: 0.015, access: "Accessible" },
+    { id: "ZONE-04", name: "Zone D", population: 0.18, severity: 5,  medical: 0.05, food: 0.30, shelter: 0.20, trapped: 0.005, access: "Accessible" }
+  ];
+
+  const zones = zoneFactors.map(z => ({
+    zone_id: z.id,
+    name: z.name,
+    population_affected: Math.max(1, Math.round(people * z.population)),
+    severity: Math.max(1, Math.min(10, z.severity + (severity >= 8 ? 0 : -1))),
+    people_needing_medical: Math.max(0, Math.round(people * z.medical)),
+    people_needing_food: Math.max(0, Math.round(people * z.food)),
+    people_needing_shelter: Math.max(0, Math.round(people * z.shelter)),
+    people_trapped: Math.max(0, Math.round(people * z.trapped)),
+    accessibility: z.access
+  }));
+
+  const resources = [
+    {
+      resource_id: "R001",
+      type: "Food",
+      quantity: 5000,
+      unit: "packets",
+      location: "Central Warehouse",
+      available: true
+    },
+    {
+      resource_id: "R002",
+      type: "Medical",
+      quantity: 1000,
+      unit: "kits",
+      location: "Medical Warehouse",
+      available: true
+    },
+    {
+      resource_id: "R003",
+      type: "Shelter",
+      quantity: 2000,
+      unit: "units",
+      location: "Relief Warehouse",
+      available: true
+    },
+    {
+      resource_id: "R004",
+      type: "Rescue",
+      quantity: 100,
+      unit: "teams",
+      location: "Emergency HQ",
+      available: true
+    }
+  ];
+
+  /* Existing allocation is kept so the reallocation agent has something to reassess. */
+  const previous_allocations = [
+    {
+      allocation_id: "AL001",
+      resource_id: "R001",
+      zone_id: "ZONE-01",
+      resource_type: "Food",
+      quantity: 4000
+    }
+  ];
+
+  /* New emergency is added only by the What-if Emergency Simulation. */
+  const new_reports = pendingEmergencyReport ? [pendingEmergencyReport] : [];
+
+  return {
+    disaster: {
+      disaster_id: "D001",
+      type,
+      location,
+      severity,
+      description,
+      timestamp: new Date().toISOString()
+    },
+    zones,
+    resources,
+    previous_allocations,
+    new_reports
+  };
+}
+
+/* Send the real request to Node.js. */
+async function analyzeDisaster(data) {
+  const response = await fetch(AI_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch (_) {
+    throw new Error("Backend returned an invalid response.");
+  }
+
+  if (!response.ok || !payload.success) {
+    throw new Error(
+      payload?.error ||
+      payload?.message ||
+      `AI request failed (${response.status})`
+    );
+  }
+
+  if (!payload.result) {
+    throw new Error("Backend returned no AI result.");
+  }
+
+  if (payload.analysis_id && payload.result && typeof payload.result === "object") {
+    payload.result.analysis_id = payload.analysis_id;
+  }
+
+  return payload.result;
+}
+
+/* Put the real AI result into the existing UI state. */
+function applyAIResult(aiResult, aiInput) {
+  MOCK.aiResponse = aiResult;
+
+  const zones = Array.isArray(aiResult.prioritized_zones)
+    ? aiResult.prioritized_zones
+    : [];
+
+  const highest = zones[0];
+  MOCK.aiPlan.priority = highest?.priority || "NORMAL";
+
+  const explanation = aiResult.explanation;
+  if (explanation && typeof explanation === "object") {
+    MOCK.aiPlan.reason = Array.isArray(explanation.key_factors) && explanation.key_factors.length
+      ? explanation.key_factors.join(" ")
+      : "AI analysis completed using the disaster, zone and resource information.";
+  } else {
+    MOCK.aiPlan.reason = explanation || "AI analysis completed successfully.";
+  }
+
+  MOCK.aiPlan.recommendations = (aiResult.allocations || []).map(a => ({
+    zone: a.zone_id || "Unknown",
+    resource: a.resource_type || "Resource",
+    quantity: Number(a.quantity || 0),
+    priority: a.urgency || "HIGH",
+    action: "ALLOCATE"
+  }));
+
+  (aiResult.reallocations || []).forEach(r => {
+    const fromZone = r.from_zone_id || r.from_zone || "Unknown";
+    const toZone = r.to_zone_id || r.to_zone || r.zone_id || "Unknown";
+    MOCK.aiPlan.recommendations.push({
+      zone: `${fromZone} → ${toZone}`,
+      resource: r.resource_type || "Resource",
+      quantity: Number(r.quantity || 0),
+      priority: r.urgency || "CRITICAL",
+      action: "REALLOCATE"
+    });
+  });
+
+  MOCK.aiPlan.alerts = (aiResult.alerts || []).map(a => ({
+    level: String(a.severity || a.level || "MEDIUM").toUpperCase(),
+    title: a.type || "AI Alert",
+    detail: a.message || a.detail || "AI detected an important situation."
+  }));
+
+  (aiResult.duplicate_efforts || []).forEach(d => {
+    MOCK.aiPlan.alerts.push({
+      level: "HIGH",
+      title: "DUPLICATE EFFORT",
+      detail: d.reason || d.message || "Multiple allocations detected for the same zone and resource."
+    });
+  });
+
+  if (aiResult.reallocation_needed) {
+    MOCK.aiPlan.alerts.push({
+      level: "CRITICAL",
+      title: "REALLOCATION REQUIRED",
+      detail: "AI detected a change in the situation and recommends dynamic resource reallocation."
+    });
+  }
+
+  MOCK.disaster.disaster_type = aiInput.disaster.type;
+  MOCK.disaster.severity = aiInput.disaster.severity;
+
+  // Show the zones returned by the real AI instead of mock priorities.
+  MOCK.zones = zones;
+
+  renderZones();
+  renderAI();
+  renderHistory();
+}
+
+/* ---------- REAL ANALYZE BUTTON ---------- */
+document.getElementById("disasterForm").addEventListener("submit", async e => {
   e.preventDefault();
-  const people=Number(document.getElementById("people").value);
-  const error=document.getElementById("formError");
-  if(!people || people<1){error.classList.add("show");return}
+
+  const people = Number(document.getElementById("people").value);
+  const error = document.getElementById("formError");
+
+  if (!people || people < 1) {
+    error.textContent = "Please enter the affected population.";
+    error.classList.add("show");
+    return;
+  }
+
   error.classList.remove("show");
   document.getElementById("loader").classList.add("show");
 
-  // MOCK DELAY: simulates the future backend + AI round trip.
-  setTimeout(()=>{
-    document.getElementById("loader").classList.remove("show");
-    const type=document.getElementById("disasterType").value;
-    const sev=Number(document.getElementById("severity").value);
-    MOCK.aiPlan.priority=sev>=5?"CRITICAL":sev>=4?"HIGH":sev>=3?"MEDIUM":"NORMAL";
-    MOCK.aiPlan.reason=`Mock analysis for ${type}: ${people.toLocaleString()} people are affected at ${document.getElementById("location").value}. Severity ${sev}/5 indicates ${sev>=4?"immediate":"planned"} relief coordination.`;
-    MOCK.disaster.disaster_type = type;
-    MOCK.disaster.severity = sev;
+  try {
+    const aiInput = buildAIInput();
+    console.log("Sending to backend / AI:", aiInput);
+
+    const aiResult = await analyzeDisaster(aiInput);
+    console.log("Real AI result:", aiResult);
+    window.lastAnalysisId = aiResult?.analysis_id || "";
+
+    applyAIResult(aiResult, aiInput);
 
     saveHistory({
-      disaster: type,
-      priority: MOCK.aiPlan.priority,
-      zones: MOCK.aiResponse.prioritized_zones.length,
-      status: "Plan generated"
+      disaster: aiInput.disaster.type,
+      priority: aiResult.prioritized_zones?.[0]?.priority || "NORMAL",
+      zones: aiResult.prioritized_zones?.length || 0,
+      status: aiResult.reallocation_needed
+        ? "Reallocation triggered"
+        : "Plan generated",
+      analysisId: aiResult.analysis_id || "",
+      result: aiResult
     });
 
-    renderAI();
-    showToast("Mock AI recommendation updated and saved to history");
-    document.getElementById("ai-plan").scrollIntoView({behavior:"smooth"});
-  },1200);
+    showToast("Real AI analysis completed and saved to history");
+    document.getElementById("ai-plan").scrollIntoView({ behavior: "smooth" });
+  } catch (err) {
+    console.error("AI integration error:", err);
+    error.textContent = `AI connection error: ${err.message}`;
+    error.classList.add("show");
+    showToast("AI analysis failed — check the backend terminal");
+  } finally {
+    document.getElementById("loader").classList.remove("show");
+  }
 });
 
-/* ---------- WHAT-IF SIMULATION ---------- */
-document.getElementById("simulateBtn").addEventListener("click",()=>{
-  const people=Number(document.getElementById("simPeople").value);
-  const water=Number(document.getElementById("simWater").value);
-  const food=Number(document.getElementById("simFood").value);
-  const severity=Number(document.getElementById("simSeverity").value);
-  if(!people){showToast("Enter simulated population");return}
+/* ---------- WHAT-IF EMERGENCY SIMULATION ---------- */
+document.getElementById("simulateBtn").addEventListener("click", async () => {
+  const zoneId = document.getElementById("simZone").value;
+  const peopleTrapped = Number(document.getElementById("simPeople").value);
+  const additionalMedical = Number(document.getElementById("simMedical").value);
+  const severityChange = Number(document.getElementById("simSeverity").value);
 
-  const waterNeed=Math.ceil(people*0.8);
-  const foodNeed=Math.ceil(people*0.5);
-  const waterShort=Math.max(0,waterNeed-water);
-  const foodShort=Math.max(0,foodNeed-food);
-  const critical=severity>=5 || waterShort>0 || foodShort>0;
-  document.getElementById("simResult").innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <div><div class="muted" style="font-size:10px;text-transform:uppercase">Simulation result</div><h3 style="margin:4px 0">${critical?"Resource pressure detected":"Resources appear sufficient"}</h3></div>
-      <span class="badge ${critical?"critical":"normal"}">${critical?"CRITICAL":"STABLE"}</span>
-    </div>
-    <div class="sim-grid">
-      <div class="sim-item">Water shortage<b>${waterShort.toLocaleString()}</b></div>
-      <div class="sim-item">Food shortage<b>${foodShort.toLocaleString()}</b></div>
-      <div class="sim-item">Affected people<b>${people.toLocaleString()}</b></div>
-    </div>
-    <p class="muted" style="font-size:12px;line-height:1.6;margin-bottom:0">
-      ${critical ? "Recommended mock action: prioritize the highest-risk zones and request additional supplies before completing the allocation." : "Mock action: continue monitoring inventory and allocate according to zone priority."}
-    </p>`;
-  document.getElementById("simResult").classList.add("show");
+  if (!peopleTrapped || peopleTrapped < 1) {
+    showToast("Enter the number of trapped people");
+    return;
+  }
 
-  saveHistory({
-    disaster: MOCK.disaster.disaster_type,
-    priority: critical ? "CRITICAL" : "HIGH",
-    zones: MOCK.aiResponse.prioritized_zones.length,
-    status: critical ? "Simulation triggered reallocation" : "Simulation completed"
-  });
+  /* Send a real emergency report to the Reallocation Agent. */
+  pendingEmergencyReport = {
+    report_id: `REP-${Date.now()}`,
+    zone_id: zoneId,
+    type: "NEW_EMERGENCY",
+    description: `Emergency reported in ${zoneId}. ${peopleTrapped} people are trapped and additional medical assistance is required.`,
+    severity_change: Math.max(0, Math.min(10, severityChange)),
+    people_trapped: peopleTrapped,
+    additional_medical_needed: Math.max(0, additionalMedical),
+    timestamp: new Date().toISOString()
+  };
 
-  showToast("Simulation completed and saved to history");
+  document.getElementById("loader").classList.add("show");
+
+  try {
+    const aiInput = buildAIInput();
+    console.log("Sending emergency report to backend / AI:", aiInput);
+
+    const aiResult = await analyzeDisaster(aiInput);
+    console.log("Real AI reallocation result:", aiResult);
+    window.lastAnalysisId = aiResult?.analysis_id || "";
+
+    applyAIResult(aiResult, aiInput);
+
+    const reallocations = aiResult.reallocations || [];
+    const target = zoneId;
+    const movedText = reallocations.length
+      ? reallocations.map(r => `${r.quantity} ${r.resource_type} from ${r.from_zone_id} to ${r.to_zone_id}`).join("; ")
+      : "No suitable existing resource was available for reallocation.";
+
+    document.getElementById("simResult").innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div>
+          <div class="muted" style="font-size:10px;text-transform:uppercase">Real AI emergency reassessment</div>
+          <h3 style="margin:4px 0">${aiResult.reallocation_needed ? "Dynamic reallocation triggered" : "Emergency reassessed"}</h3>
+        </div>
+        <span class="badge ${aiResult.reallocation_needed ? "critical" : "normal"}">${aiResult.reallocation_needed ? "REALLOCATION" : "REASSESSED"}</span>
+      </div>
+      <div class="sim-grid">
+        <div class="sim-item">Emergency zone<b>${target}</b></div>
+        <div class="sim-item">People trapped<b>${peopleTrapped.toLocaleString()}</b></div>
+        <div class="sim-item">Medical needed<b>${additionalMedical.toLocaleString()}</b></div>
+      </div>
+      <p class="muted" style="font-size:12px;line-height:1.6;margin-bottom:0">
+        ${movedText}
+      </p>`;
+
+    document.getElementById("simResult").classList.add("show");
+
+    saveHistory({
+      disaster: aiInput.disaster.type,
+      priority: aiResult.prioritized_zones?.[0]?.priority || "NORMAL",
+      zones: aiResult.prioritized_zones?.length || 0,
+      status: aiResult.reallocation_needed
+        ? "Emergency detected — resources reallocated"
+        : "Emergency reassessed",
+      analysisId: aiResult.analysis_id || "",
+      result: aiResult
+    });
+
+    showToast(
+      aiResult.reallocation_needed
+        ? "AI detected emergency and triggered reallocation"
+        : "AI emergency reassessment completed"
+    );
+
+    document.getElementById("ai-plan").scrollIntoView({ behavior: "smooth" });
+
+  } catch (err) {
+    console.error("Emergency simulation error:", err);
+    showToast("Emergency AI analysis failed — check the backend terminal");
+  } finally {
+    document.getElementById("loader").classList.remove("show");
+    /* Keep the report only for this reassessment. */
+    pendingEmergencyReport = null;
+  }
 });
 
-/* ---------- API ADAPTER PLACEHOLDER ----------
-   IMPORTANT:
-   These functions intentionally DO NOT call fetch().
-   Later, replace their bodies only after the team finalizes
-   the common API contract.
-
-   async function getDashboardData(){ ... }
-   async function analyzeDisaster(data){ ... }
-   async function getZones(){ ... }
-   async function getResources(){ ... }
-   async function runSimulation(data){ ... }
-   async function getAllocationHistory(){ ... }
-
-   The UI renderers above should continue receiving the
-   finalized response objects. Do not invent field names here.
---------------------------------------------------- */
+/* ---------- HISTORY CONTROLS ---------- */
+document.getElementById("clearHistoryBtn").addEventListener("click", clearHistory);
 
 /* ---------- NAVIGATION ---------- */
 document.querySelectorAll(".nav button").forEach(btn=>{
@@ -661,6 +1048,7 @@ renderZones();
 renderResources();
 renderAI();
 renderHistory();
+loadBackendHistory();
 </script>
 </body>
 </html>
